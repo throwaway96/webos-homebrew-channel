@@ -17,8 +17,8 @@ apt-get update && apt-get install -y --no-install-recommends wget ca-certificate
 function install_ndk() {
     # Install NDK
     [[ -f "${NDK_PATH}/environment-setup" ]] && return
-    wget https://github.com/openlgtv/buildroot-nc4/releases/download/webos-0d62420/arm-webos-linux-gnueabi_sdk-buildroot.1.tar.gz -O /tmp/webos-sdk.tgz
-    sha256sum -c <<< '2008d6e5b82ee12907400775b11c974054a756907d4a23404268bfaf95bb261b /tmp/webos-sdk.tgz'
+    wget https://github.com/openlgtv/buildroot-nc4/releases/download/webos-2974f83/arm-webos-linux-gnueabi_sdk-buildroot.tar.gz -O /tmp/webos-sdk.tgz
+    sha256sum -c <<< '94a2eb89750299be7d380df37cd74e37c76233934a9980722ec20065943ebd2d /tmp/webos-sdk.tgz'
     mkdir -p "$NDK_PATH"
     tar xvf /tmp/webos-sdk.tgz -C "${NDK_PATH}" --strip-components=1
     ${NDK_PATH}/relocate-sdk.sh
@@ -78,9 +78,9 @@ function build_sftp() {
 }
 
 install_ndk &
-download 'dropbear' 'https://github.com/mkj/dropbear/archive/refs/tags/DROPBEAR_2020.81.tar.gz' 'c7cfc687088daca392b780f4af87d92ec1803f062c4c984f02062adc41b8147f' &
-download 'rsync'    'https://github.com/WayneD/rsync/archive/refs/tags/v3.2.3.tar.gz'           '3127c93d7081db075d1057a44b0bd68ff37f297ba9fe2554043c3e4481ae5056' &
-download 'openssh'  'https://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-8.6p1.tar.gz' 'c3e6e4da1621762c850d03b47eed1e48dff4cc9608ddeb547202a234df8ed7ae' &
+download 'dropbear' 'https://github.com/mkj/dropbear/archive/refs/tags/DROPBEAR_2022.83.tar.gz' 'e02c5c36eb53bfcd3f417c6e40703a50ec790a1a772269ea156a2ccef14998d2' &
+download 'rsync'    'https://github.com/WayneD/rsync/archive/refs/tags/v3.2.7.tar.gz'           '4f2a350baa93dc666078b84bc300767a77789ca12f0dec3cb4b3024971f8ef47' &
+download 'openssh'  'https://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-9.1p1.tar.gz' '19f85009c7e3e23787f0236fbb1578392ab4d4bf9f8ec5fe6bc1cd7e8bfdd288' &
 wait
 
 build_dropbear &
