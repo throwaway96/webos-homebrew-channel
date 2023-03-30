@@ -1,4 +1,7 @@
-#! /bin/sh
+#!/bin/sh
 
 # :^)
-eval "$(cat /usr/bin/run-js-service | sed 's/^thirdparty_jail=.*/thirdparty_jail=off/')"
+eval "$(sed -e '/^thirdparty_jail=/s/=.*/=off/' \
+            -e '\@/var/luna/preferences/devmode_enabled@s/if /&false \&\& /' \
+            -e '/inspect-port/s/127\.0\.0\.1/0.0.0.0/' \
+            '/usr/bin/run-js-service')"
