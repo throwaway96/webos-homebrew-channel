@@ -677,6 +677,7 @@ function runService() {
         env: {
           LD_PRELOAD: '',
           SKIP_ELEVATION: 'true',
+          SERVICE_DIR: __dirname,
         },
         detached: true,
         stdio: ['ignore', 'ignore', 'ignore'],
