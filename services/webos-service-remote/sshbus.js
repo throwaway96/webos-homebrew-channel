@@ -98,13 +98,13 @@ export default class Handle {
     });
   }
 
-  async queryNyxId() {
+  static async queryNyxId() {
     const raw = (await asyncReadFile('/var/run/nyx/device_info.json')).toString();
 
     const start = raw.indexOf('{');
     const { nduid } = JSON.parse(raw.slice(start, raw.indexOf('}', start)));
     if (!nduid) {
-      throw new Error('Failed to get NDU ID from Nyx');
+      throw new Error('Failed to get NDUID from Nyx');
     }
     return nduid;
   }
