@@ -320,7 +320,7 @@ function tryRespond<T extends Record<string, any>>(runner: (message: Message) =>
 
 function runService() {
   const service = new Service(serviceInfo.id, null, { idleTimer: 30 });
-  const serviceRemote = new ServiceRemote(service);
+  const serviceRemote = new ServiceRemote();
 
   function getInstallerService(): Service {
     if (runningAsRoot()) {
@@ -706,7 +706,7 @@ if (process.argv[2] === 'self-update') {
   });
 
   (async () => {
-    const service = new ServiceRemote(null) as Service;
+    const service = new ServiceRemote() as Service;
     try {
       await createToast('Performing self-update (inner)', service);
       const installedPackageId = await installPackage(process.argv[3], service);
