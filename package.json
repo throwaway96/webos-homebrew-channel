@@ -32,7 +32,8 @@
         "services/run-js-service",
         "services/startup.sh",
         "services/jumpstart.sh",
-        "services/elevate-service"
+        "services/elevate-service",
+        "services/isrg-roots-x1-x2.pem"
     ],
     "styles": [
         "frontend/views/DetailsPanel.css"
@@ -83,6 +84,7 @@
         "webpack-shebang-plugin": "^1.1.8"
     },
     "dependencies": {
+        "@small-tech/syswide-cas": "^6.0.2",
         "bluebird": "^3.7.2",
         "core-js": "^3.36.0",
         "dompurify": "=3.0.1",
