@@ -10,6 +10,8 @@ import child_process from 'child_process';
 import { Promise } from 'bluebird'; // eslint-disable-line @typescript-eslint/no-redeclare
 import progress from 'progress-stream';
 import Service, { Message } from 'webos-service';
+import syswideCas from '@small-tech/syswide-cas';
+
 import fetch from 'node-fetch';
 import {
   asyncStat,
@@ -319,6 +321,8 @@ function tryRespond<T extends Record<string, any>>(runner: (message: Message) =>
 }
 
 function runService() {
+  syswideCas.addCAs([path.join(__dirname, 'isrg-roots-x1-x2.pem'), '/etc/ssl/certs']);
+
   const service = new Service(serviceInfo.id, null, { idleTimer: 30 });
   const serviceRemote = new ServiceRemote();
 
