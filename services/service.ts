@@ -32,22 +32,33 @@ const kHomebrewChannelPackageId = rootAppInfo.id;
 const startDevmode = '/media/cryptofs/apps/usr/palm/services/com.palmdts.devmode.service/start-devmode.sh';
 
 // Maps internal setting field name with filesystem flag name.
-type FlagName = string;
-const availableFlags = {
+// TODO: Figure out how to avoid repeating these.
+type FlagName = 'telnetDisabled' | 'failsafe' | 'sshdEnabled' | 'blockUpdates';
+const availableFlags: Record<FlagName, string> = {
   telnetDisabled: 'webosbrew_telnet_disabled',
   failsafe: 'webosbrew_failsafe',
   sshdEnabled: 'webosbrew_sshd_enabled',
   blockUpdates: 'webosbrew_block_updates',
-} as Record<string, FlagName>;
+} as const;
+type FlagFileName = (typeof availableFlags)[FlagName];
 
-function runningAsRoot(): boolean {
+const runningAsRoot: boolean = (() => {
+  if (typeof process.getuid === 'undefined') {
+    throw new Error('process.getuid() is missing');
+  }
   return process.getuid() === 0;
+})();
+
+function assertNodeError(error: Error | unknown): asserts error is NodeJS.ErrnoException {
+  if (!(error instanceof Error)) {
+    throw error;
+  }
 }
 
 function asyncCall<T extends Record<string, any>>(srv: Service, uri: string, args: Record<string, any>): Promise<T> {
   return new Promise((resolve, reject) => {
     srv.call(uri, args, ({ payload }) => {
-      if (payload.returnValue) {
+      if (payload['returnValue']) {
         resolve(payload as T);
       } else {
         reject(payload);
@@ -71,7 +82,7 @@ function createToast(message: string, service: Service, extras: Record<string, a
 async function isFile(targetPath: string): Promise<boolean> {
   try {
     return (await asyncStat(targetPath)).isFile();
-  } catch (err) {
+  } catch (err: unknown) {
     return false;
   }
 }
@@ -112,7 +123,7 @@ function hashString(data: string, algorithm: string): string {
  * Elevates a package by name.
  */
 async function elevateService(pkg: string): Promise<void> {
-  if (runningAsRoot()) {
+  if (runningAsRoot) {
     console.info('Elevating service...');
     await asyncExecFile(path.join(__dirname, 'elevate-service'), [pkg]);
   } else {
@@ -123,33 +134,34 @@ async function elevateService(pkg: string): Promise<void> {
 /**
  * Returns the file path for a flag.
  */
-function flagPath(flag: FlagName): string {
-  return `/var/luna/preferences/${flag}`;
+function flagFilePath(flagFile: FlagFileName): string {
+  return `/var/luna/preferences/${flagFile}`;
 }
 
 /**
  * Returns whether a flag is set or not.
  */
-async function flagRead(flag: FlagName): Promise<boolean> {
-  return asyncExists(flagPath(flag));
+async function flagFileRead(flagFile: FlagFileName): Promise<boolean> {
+  return asyncExists(flagFilePath(flagFile));
 }
 
 /**
  * Sets the value of a flag.
  */
-async function flagSet(flag: FlagName, enabled: boolean): Promise<boolean> {
+async function flagFileSet(flagFile: FlagFileName, enabled: boolean): Promise<boolean> {
   if (enabled) {
     // The file content is ignored, file presence is what matters. Writing '1' acts as a hint.
-    await asyncWriteFile(flagPath(flag), '1');
+    await asyncWriteFile(flagFilePath(flagFile), '1');
   } else {
     try {
-      await asyncUnlink(flagPath(flag));
-    } catch (err) {
+      await asyncUnlink(flagFilePath(flagFile));
+    } catch (err: unknown) {
+      assertNodeError(err);
       // Already deleted is not a fatal error.
       if (err.code !== 'ENOENT') throw err;
     }
   }
-  return flagRead(flag);
+  return flagFileRead(flagFile);
 }
 
 /**
@@ -164,7 +176,7 @@ async function packageInfo(filePath: string): Promise<Record<string, string>> {
       .filter((m) => m.length)
       .map((p) => [p.slice(0, p.indexOf(': ')), p.slice(p.indexOf(': ') + 2)]),
   );
-  if (!resp.Package) {
+  if (!resp['Package']) {
     throw new Error(`Invalid package info: ${JSON.stringify(resp)}`);
   }
   return resp;
@@ -302,7 +314,8 @@ function tryRespond<T extends Record<string, any>>(runner: (message: Message) =>
     try {
       const reply: T = await runner(message);
       message.respond(makeSuccess(reply));
-    } catch (err) {
+    } catch (err: unknown) {
+      assertNodeError(err);
       message.respond(makeError(err.message));
     } finally {
       message.cancel({});
@@ -310,12 +323,12 @@ function tryRespond<T extends Record<string, any>>(runner: (message: Message) =>
   };
 }
 
-function runService() {
-  const service = new Service(serviceInfo.id, null, { idleTimer: 30 });
+function runService(): void {
+  const service = new Service(serviceInfo.id, undefined, { idleTimer: 30 });
   const serviceRemote = new ServiceRemote(service);
 
   function getInstallerService(): Service {
-    if (runningAsRoot()) {
+    if (runningAsRoot) {
       return service;
     }
     return serviceRemote as Service;
@@ -349,7 +362,7 @@ function runService() {
         throw new Error(res.statusText);
       }
       const progressReporter = progress({
-        length: parseInt(res.headers.get('content-length'), 10),
+        length: parseInt(res.headers.get('content-length') ?? '0', 10),
         time: 300 /* ms */,
       });
       progressReporter.on('progress', (p) => {
@@ -365,11 +378,12 @@ function runService() {
         throw new Error(`Invalid file checksum (${payload.ipkHash} expected, got ${checksum}`);
       }
 
-      let pkginfo: Record<string, string> = { Package: payload.id };
+      let pkginfo: Record<string, string | undefined> = { Package: payload.id };
 
       try {
         pkginfo = await packageInfo(targetPath);
-      } catch (err) {
+      } catch (err: unknown) {
+        assertNodeError(err);
         await createToast(`Package info fetch failed: ${err.message}`, service);
       }
 
@@ -386,7 +400,7 @@ function runService() {
       // If reelevation fails for some reason the service should still be
       // reelevated on reboot on devices with persistent autostart hooks (since
       // we launch elevate-service in startup.sh script)
-      if (runningAsRoot() && pkginfo && pkginfo.Package === kHomebrewChannelPackageId) {
+      if (runningAsRoot && pkginfo && pkginfo['Package'] === kHomebrewChannelPackageId) {
         message.respond({ statusText: 'Self-update…' });
         await createToast('Performing self-update...', service);
 
@@ -401,8 +415,8 @@ function runService() {
 
       try {
         const appInfo = await getAppInfo(installedPackageId);
-        await createToast(`Application installed: ${appInfo.title}`, service);
-      } catch (err) {
+        await createToast(`Application installed: ${appInfo['title']}`, service);
+      } catch (err: unknown) {
         console.warn('appinfo fetch failed:', err);
         await createToast(`Application installed: ${installedPackageId}`, service);
       }
@@ -417,10 +431,12 @@ function runService() {
   /**
    * Removes existing package.
    */
+  type UninstallPayload = { id: string };
   service.register(
     'uninstall',
     tryRespond(async (message: Message) => {
-      await removePackage(message.payload.id, getInstallerService());
+      const payload = message.payload as UninstallPayload;
+      await removePackage(payload.id, getInstallerService());
       return { statusText: 'Finished.' };
     }),
   );
@@ -432,11 +448,11 @@ function runService() {
     'getConfiguration',
     tryRespond(async () => {
       const futureFlags = Object.entries(availableFlags).map(
-        async ([field, flagName]) => [field, await flagRead(flagName)] as [string, boolean],
+        async ([flag, flagFile]) => [flag, await flagFileRead(flagFile)] as [FlagName, boolean],
       );
       const flags = Object.fromEntries(await Promise.all(futureFlags));
       return {
-        root: process.getuid() === 0,
+        root: runningAsRoot,
         ...flags,
       };
     }),
@@ -448,12 +464,13 @@ function runService() {
   type SetConfigurationPayload = Record<string, boolean>;
   service.register(
     'setConfiguration',
-    tryRespond(async (message) => {
+    tryRespond(async (message: Message) => {
       const payload = message.payload as SetConfigurationPayload;
+      // TODO: Use destructuring again once it works with type predicates.
+      //       See https://github.com/microsoft/TypeScript/issues/41173
       const futureFlagSets = Object.entries(payload)
-        .map(([field, value]) => [field, availableFlags[field], value] as [string, FlagName | undefined, boolean])
-        .filter(([, flagName]) => flagName !== undefined)
-        .map(async ([field, flagName, value]) => [field, await flagSet(flagName, value)]);
+        .filter((pair: [string, boolean]): pair is [FlagName, boolean] => pair[0] in availableFlags)
+        .map(async ([flagName, value]) => [flagName, await flagFileSet(availableFlags[flagName], value)]);
       return Object.fromEntries(await Promise.all(futureFlagSets));
     }),
   );
@@ -473,7 +490,7 @@ function runService() {
    */
   service.register(
     'checkRoot',
-    tryRespond(async () => ({ returnValue: runningAsRoot() })),
+    tryRespond(async () => ({ returnValue: runningAsRoot })),
   );
 
   /**
@@ -482,7 +499,7 @@ function runService() {
   service.register(
     'updateStartupScript',
     tryRespond(async () => {
-      if (!runningAsRoot()) {
+      if (!runningAsRoot) {
         return { returnValue: true, statusText: 'Not running as root.' };
       }
 
@@ -552,7 +569,8 @@ function runService() {
             messages.push(`${startDevmode} has been manually modified!`);
           }
         }
-      } catch (err) {
+      } catch (err: unknown) {
+        assertNodeError(err);
         console.log(`Startup script update failed: ${err.stack}`);
         messages = ['Startup script update failed!', ...messages, `Error: ${err.toString()}`];
         await createToast(messages.join('<br/>'), service);
@@ -575,7 +593,7 @@ function runService() {
   type GetAppInfoPayload = { id: string };
   service.register(
     'getAppInfo',
-    tryRespond(async (message) => {
+    tryRespond(async (message: Message) => {
       const payload = message.payload as GetAppInfoPayload;
       const appId: string = payload.id;
       if (!appId) throw new Error('missing `id` string field');
@@ -635,7 +653,7 @@ function runService() {
   type GetDrmStatusPayload = { appId: string };
   service.register(
     'getDrmStatus',
-    tryRespond(async (message) => ({
+    tryRespond(async (message: Message) => ({
       appId: (message.payload as GetDrmStatusPayload).appId,
       drmType: 'NCG DRM',
       installBasePath: '/media/cryptofs',
@@ -651,8 +669,8 @@ function runService() {
 
   service.register(
     'autostart',
-    tryRespond(async (message) => {
-      if (!runningAsRoot()) {
+    tryRespond(async (message: Message) => {
+      if (!runningAsRoot) {
         return { message: 'Not running as root.', returnValue: true };
       }
       if (await asyncExists('/tmp/webosbrew_startup')) {
@@ -682,7 +700,7 @@ function runService() {
       });
 
       // Register activity if autostart was triggered in traditional way
-      if (message.payload?.reason !== 'activity') {
+      if (message.payload['reason'] !== 'activity') {
         await registerActivity(service);
       }
 
@@ -699,14 +717,20 @@ if (process.argv[2] === 'self-update') {
   (async () => {
     const service = new ServiceRemote(null) as Service;
     try {
+      const packagePath = process.argv[3];
+      if (typeof packagePath !== 'string') {
+        throw new Error('missing package path');
+      }
+
       await createToast('Performing self-update (inner)', service);
-      const installedPackageId = await installPackage(process.argv[3], service);
+      const installedPackageId = await installPackage(packagePath, service);
       await createToast('Elevating...', service);
       await elevateService(`${installedPackageId}.service`);
       await createToast('Self-update finished!', service);
       process.exit(0);
-    } catch (err) {
-      console.info(err);
+    } catch (err: unknown) {
+      console.error(err);
+      assertNodeError(err);
       await createToast(`Self-update failed: ${err.message}`, service);
       process.exit(1);
     }
