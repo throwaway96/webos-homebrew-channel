@@ -32,11 +32,11 @@ import ServiceRemote from './webos-service-remote';
 
 const kHomebrewChannelPackageId = rootAppInfo.id;
 const startDevmode = '/media/cryptofs/apps/usr/palm/services/com.palmdts.devmode.service/start-devmode.sh';
-const installRootPath = ((): string | null => {
+const homebrewBaseDir = ((): string | null => {
   try {
     return path.resolve(__dirname, '../../../../');
   } catch (err) {
-    console.warn('getting installRootPath failed:', err);
+    console.warn('getting homebrewBaseDir failed:', err);
     return null;
   }
 })();
@@ -465,7 +465,7 @@ function runService() {
       const flags = Object.fromEntries(await Promise.all(futureFlags));
       return {
         root: runningAsRoot,
-        installRoot: installRootPath,
+        homebrewBaseDir,
         ...flags,
       };
     }),
