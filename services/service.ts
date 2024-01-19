@@ -41,6 +41,18 @@ const homebrewBaseDir = ((): string | null => {
   }
 })();
 
+const nodeVersion = (() => {
+  try {
+    // Just in case there's a build/pre-release suffix.
+    const core = process.versions.node.split(/[-+]/, 1)[0] as string;
+    const [major, minor = 0, patch = 0] = core.split('.').map((x) => parseInt(x, 10));
+    return { major, minor, patch };
+  } catch (err) {
+    console.warn('getting nodeVersion failed:', err);
+    return { major: 0, minor: 0, patch: 0 };
+  }
+})();
+
 // Maps internal setting field name with filesystem flag name.
 // TODO: Figure out how to avoid repeating these.
 type FlagName = 'telnetDisabled' | 'failsafe' | 'sshdEnabled' | 'blockUpdates';
@@ -630,7 +642,11 @@ function runService() {
     }
 
     const payload = message.payload as ExecPayload;
-    child_process.exec(payload.command, { encoding: 'buffer' }, (error, stdout, stderr) => {
+
+    /* XXX: I think I'm going to have to write a separate callback for v0.10.x */
+    const encoding = nodeVersion.major == 0 && nodeVersion.minor < 12 ? null : 'buffer';
+
+    child_process.exec(payload.command, { encoding: encoding }, (error, stdout, stderr) => {
       const response = {
         error,
         stdoutString: stdout.toString(),
