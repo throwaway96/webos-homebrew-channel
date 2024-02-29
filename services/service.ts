@@ -144,12 +144,14 @@ function hashString(data: string, algorithm: string): string {
 /**
  * Elevates a package by name.
  */
-async function elevateService(pkg: string): Promise<void> {
+async function elevateService(pkg: string): Promise<boolean> {
   if (runningAsRoot) {
     console.info('Elevating service...');
     await asyncExecFile(path.join(__dirname, 'elevate-service'), [pkg]);
+    return true;
   } else {
     console.error('Trying to elevate service without running as root. Skipping.');
+    return false;
   }
 }
 
@@ -743,6 +745,33 @@ function runService() {
       }
 
       return { returnValue: true };
+    }),
+  );
+
+  /**
+   * Elevates the service specified by "id".
+   */
+  type ElevateServicePayload = { id: string };
+  service.register(
+    'elevateService',
+    tryRespond(async (message: Message) => {
+      if (!('id' in message.payload)) {
+        message.respond(makeError('missing "id"'));
+        return;
+      } else if (typeof message.payload['id'] !== 'string') {
+        message.respond(makeError('"id" is not a string'));
+        return;
+      }
+
+      if (!runningAsRoot) {
+        throw new Error('not running as root');
+      }
+
+      const payload = message.payload as ElevateServicePayload;
+
+      const status = await elevateService(payload.id);
+
+      return { returnValue: status };
     }),
   );
 }
