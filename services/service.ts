@@ -756,11 +756,11 @@ function runService() {
     'elevateService',
     tryRespond(async (message: Message) => {
       if (!('id' in message.payload)) {
-        message.respond(makeError('missing "id"'));
-        return;
+        throw new Error('missing "id"');
       } else if (typeof message.payload['id'] !== 'string') {
-        message.respond(makeError('"id" is not a string'));
-        return;
+        throw new Error('"id" is not a string');
+      } else if (message.payload['id'] === '') {
+        throw new Error('"id" is empty');
       }
 
       if (!runningAsRoot) {
@@ -771,7 +771,9 @@ function runService() {
 
       const status = await elevateService(payload.id);
 
-      return { returnValue: status };
+      if (!status) {
+        throw new Error('elevateService() failed');
+      }
     }),
   );
 }
