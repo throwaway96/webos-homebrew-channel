@@ -145,14 +145,14 @@ function hashString(data: string, algorithm: string): string {
  * Elevates a package by name.
  */
 async function elevateService(pkg: string): Promise<boolean> {
-  if (runningAsRoot) {
-    console.info('Elevating service...');
-    await asyncExecFile(path.join(__dirname, 'elevate-service'), [pkg]);
-    return true;
-  } else {
+  if (!runningAsRoot) {
     console.error('Trying to elevate service without running as root. Skipping.');
     return false;
   }
+
+  console.info('Elevating service...');
+  await asyncExecFile(path.join(__dirname, 'elevate-service'), [pkg]);
+  return true;
 }
 
 /**
