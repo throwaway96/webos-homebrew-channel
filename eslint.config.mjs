@@ -3,10 +3,9 @@ import ts from 'typescript-eslint';
 
 import jsoncParser from 'jsonc-eslint-parser';
 
-import prettierPlugin from 'eslint-plugin-prettier';
 import importPlugin from 'eslint-plugin-import';
 
-import prettierConfig from 'eslint-config-prettier';
+import prettierRecommendedConfig from 'eslint-plugin-prettier/recommended';
 
 import globals from 'globals';
 
@@ -35,21 +34,25 @@ airbnbCompat[0].plugins = {
 
 export default ts.config(
   {
-    ignores: ['frontend/**', 'lib/**', 'node_modules/**', 'dist/**'],
+    ignores: ['frontend/**', 'lib/**', 'node_modules/**', 'dist/**', '.vscode/**'],
   },
   js.configs.recommended,
   ...ts.configs.strictTypeChecked,
   ...airbnbCompat,
-  prettierConfig,
+  prettierRecommendedConfig,
   {
     /* all JS/TS files */
     files: ['**/*.{js,mjs,cjs,ts}'],
     plugins: {
-      prettier: prettierPlugin,
       import: importPlugin,
     },
     rules: {
-      'prettier/prettier': ['error'],
+      'prettier/prettier': [
+        'error',
+        {
+          trailingComma: 'all',
+        },
+      ],
       /* allow names that start with _ to be unused */
       '@typescript-eslint/no-unused-vars': [
         'error',
@@ -169,6 +172,17 @@ export default ts.config(
     files: ['webpack.config.js'],
     rules: {
       '@typescript-eslint/no-var-requires': 'off',
+    },
+  },
+  {
+    files: ['babel.config.json', 'tsconfig.json', 'eslint.confing.mjs'],
+    rules: {
+      'prettier/prettier': [
+        'error',
+        {
+          multilineArraysWrapThreshold: -1,
+        },
+      ],
     },
   },
 );

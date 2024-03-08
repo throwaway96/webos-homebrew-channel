@@ -1,0 +1,7 @@
+{
+    "plugins": [
+        "prettier-plugin-multiline-arrays"
+    ],
+    "multilineArraysWrapThreshold": 5,
+    "trailingComma": "all"
+}
