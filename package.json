@@ -83,6 +83,7 @@
         "webpack-shebang-plugin": "^1.1.8"
     },
     "dependencies": {
+        "@throwaway96/node-load-cert-dir": "github:throwaway96/node-load-cert-dir#3ee91bcd62b1b6f40476472458ce57aa830de943",
         "bluebird": "^3.7.2",
         "core-js": "^3.36.0",
         "dompurify": "=3.0.1",
