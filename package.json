@@ -27,6 +27,7 @@
         "appinfo.json",
         "assets/**",
         "services/bin/**",
+        "services/certs/**",
         "services/services.json",
         "services/package.json",
         "services/run-js-service",
