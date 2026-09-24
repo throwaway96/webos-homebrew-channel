@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-09-24
+### Fixed
+- Fix handling of Luna errors (@kitsuned; #222)
+- Fix activity-based autostart on old webOS and replace `previewMetadata`
+  method (@kitsuned; #230)
+- Fix user ID check (@kitsuned; #231)
+- Fix unprivileged incoming Luna requests on webOS 11 (@kitsuned; #233)
+
+### Removed
+- Remove unused utilities (@kitsuned; #221)
+
+## [0.7.3] - 2026-01-11
+### Added
+- Ship `telnetd` binary (@mariotaku; #213)
+
+### Fixed
+- Fix app icon size on FHD models (@mariotaku; #214)
+
+### Changed
+- GitHub issue template and documentation changes (@mariotaku, @JustablockCode;
+  #205, #206, #207)
+
+## Removed
+- Remove unused source file (@mariotaku; #215)
+
 ## [0.7.2] - 2024-11-16
 ### Fixed
 - Fix Luna calls when service not elevated (@mariotaku; #200)
